@@ -146,3 +146,4 @@ cython_debug/
 db.ini
 deploy_key_rsa
 *.bin
+*.pt
