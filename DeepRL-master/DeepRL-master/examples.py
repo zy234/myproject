@@ -3,9 +3,9 @@
 # Permission given to modify the code as long as you keep this        #
 # declaration at the top                                              #
 #######################################################################
+import sys
 
-from .deep_rl import *
-
+from deep_rl import *
 
 # DQN
 def dqn_feature(**kwargs):
