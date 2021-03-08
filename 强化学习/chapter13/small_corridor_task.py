@@ -76,7 +76,7 @@ class ReinforceAgent:
         self.rewards = []
         self.actions = []
 
-    def get_pi(self):
+    def get_pi(self): # function of strategy
         h = np.dot(self.theta, self.x)
         t = np.exp(h - np.max(h))
         pmf = t / np.sum(t)
@@ -85,7 +85,7 @@ class ReinforceAgent:
         imin = np.argmin(pmf)
         epsilon = 0.05
 
-        if pmf[imin] < epsilon:
+        if pmf[imin] < epsilon: # at least probability of 0.05 to choose action imin
             pmf[:] = 1 - epsilon
             pmf[imin] = epsilon
 
@@ -98,7 +98,7 @@ class ReinforceAgent:
         if reward is not None:
             self.rewards.append(reward)
 
-        pmf = self.get_pi()
+        pmf = self.get_pi()  # the probability of each action
         go_right = np.random.uniform() <= pmf[1]
         self.actions.append(go_right)
 
@@ -107,11 +107,11 @@ class ReinforceAgent:
     def episode_end(self, last_reward):
         self.rewards.append(last_reward)
 
-        # learn theta
-        G = np.zeros(len(self.rewards))
+        # learn theta , Behind a scene sequence
+        G = np.zeros(len(self.rewards))  # Cumulative reward
         G[-1] = self.rewards[-1]
 
-        for i in range(2, len(G) + 1):
+        for i in range(2, len(G) + 1): # Back to front compute, with gamma
             G[-i] = self.gamma * G[-i + 1] + self.rewards[-i]
 
         gamma_pow = 1
@@ -216,9 +216,42 @@ def example_13_1():
 
     fig = plt.gcf()
     plt.show()
-    fig.savefig("figure_13_1.png")
+    fig.savefig("example_13_1.png")
+
+def figure_13_1():
+    num_trials = 100
+    num_episodes = 1000
+    gamma = 1
+    agent_generators = [lambda : ReinforceAgent(alpha=2e-4, gamma=gamma),
+                        lambda : ReinforceAgent(alpha=2e-5, gamma=gamma),
+                        lambda : ReinforceAgent(alpha=2e-3, gamma=gamma)]
+    labels = ['alpha = 2e-4',
+              'alpha = 2e-5',
+              'alpha = 2e-3']
+
+    rewards = np.zeros((len(agent_generators), num_trials, num_episodes))
+
+    for agent_index, agent_generator in enumerate(agent_generators):
+        for i in tqdm(range(num_trials)):
+            reward = trial(num_episodes, agent_generator)
+            rewards[agent_index, i, :] = reward
+
+    plt.plot(np.arange(num_episodes) + 1, -11.6 * np.ones(num_episodes), ls='dashed', color='red', label='-11.6')
+    for i, label in enumerate(labels):
+        plt.plot(np.arange(num_episodes) + 1, rewards[i].mean(axis=0), label=label)
+    plt.ylabel('total reward on episode')
+    plt.xlabel('episode')
+    plt.legend(loc='lower right')
+
+    fig = plt.gcf()
+    plt.show()
+    fig.savefig('figure_13_1')
+
 
 if __name__ == '__main__':
     FIGURE = '13_1'
-    if FIGURE == '13_1':
+    if FIGURE == 'example_13_1':
         example_13_1()
+    elif FIGURE == '13_1':
+        figure_13_1()
+

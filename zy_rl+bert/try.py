@@ -1,17 +1,8 @@
-import torch
+import torch.nn as nn
 import torch.optim as optim
-
-x = torch.tensor([1.], requires_grad=True)
-w = torch.tensor([2.], requires_grad=True)
-
-y = x * w + 1.
-z = x ** 2
-optimizer = optim.Adam([x, w], lr=0.1)
-
-y.backward()
-
-z.backward()
-x.grad *= -3.
-
-optimizer.step()
-print(x)
+import numpy as np
+import torch
+embedding = nn.Embedding()
+weight = torch.FloatTensor([[1, 2.3, 3], [4, 5.1, 6.3]],[[1, 2.3, 3], [4, 5.1, 6.3]])
+embedding = nn.Embedding.from_pretrained(weight)
+print(embedding)

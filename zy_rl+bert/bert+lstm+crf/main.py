@@ -13,7 +13,6 @@ from model import Net
 from crf import Bert_BiLSTM_CRF
 from utils import NerDataset, pad, VOCAB, tokenizer, tag2idx, idx2tag
 
-
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
 
