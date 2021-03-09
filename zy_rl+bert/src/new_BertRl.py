@@ -41,4 +41,4 @@ class Bert_Rl(nn.Module):
     def forward(self, x):
         #
         bert_hidden_state = self.bert_encoder(x)
-        action =
+        action =1

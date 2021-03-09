@@ -51,7 +51,7 @@ class DQN(object):
         self.loss_func = nn.MSELoss()
         self.epsilon = 0.9
 
-    def choose_func(self, x):
+    def choose_action(self, x):
         x = torch.unsqueeze(torch.FloatTensor(x), 0)
         # 这里只输入一个 sample
         if np.random.uniform() < self.epsilon:  # 选最优动作
@@ -99,4 +99,6 @@ dqn = DQN()
 sta = State()
 for i_episode in range(400):
     input = torch.rand([32, 256, 768])
-    states = sta(input)
+    states = sta(input) # 化成[x, 768] 将所有状态，除去pad部分存成2维
+    for ten_s in states:
+        a = dqn.choose_action(ten_s)
