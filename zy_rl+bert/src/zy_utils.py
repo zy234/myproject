@@ -19,7 +19,7 @@ from transformers import BertTokenizer
 
 logger = logging.getLogger(__name__)
 
-bert_model = '../bert+lstm+crf/pretrained_model'
+bert_model = 'bert-base-uncased'
 tokenizer = BertTokenizer.from_pretrained(bert_model)
 
 # bert crf 版本
