@@ -147,3 +147,7 @@ db.ini
 deploy_key_rsa
 *.bin
 *.pt
+/zy_rl+bert/data/test.txt
+/zy_rl+bert/data/train.txt
+/zy_rl+bert/bert+lstm+crf/pretrained_model/
+/zy_rl+bert/runs/
