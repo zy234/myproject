@@ -11,10 +11,11 @@ class MyBertModel(nn.Module):
         self.out = nn.Linear(192, 5)
         self.active_func = nn.ReLU()
         self.loss_func = nn.CrossEntropyLoss()
+        self.detached_loss_func = nn.CrossEntropyLoss(reduction="none")
 
         self.num_labels = 5
 
-    def forward(self, inputs, labels=None, attention_mask=None):
+    def forward(self, inputs, labels=None, attention_mask=None, detached_loss=False):
         outputs = self.bert(inputs, attention_mask=attention_mask)
 
         sequence_output = outputs[0]
@@ -24,6 +25,10 @@ class MyBertModel(nn.Module):
         logits = self.out(sequence_output)
 
         loss = None
+        if detached_loss:
+            loss_func = self.detached_loss_func
+        else:
+            loss_func = self.loss_func
         if labels is not None:
             # Only keep active parts of the loss
             if attention_mask is not None:
@@ -32,9 +37,9 @@ class MyBertModel(nn.Module):
                 active_labels = torch.where(
                     active_loss, labels.view(-1), torch.tensor(self.loss_func.ignore_index).type_as(labels)
                 )
-                loss = self.loss_func(active_logits, active_labels)
+                loss = loss_func(active_logits, active_labels)
             else:
-                loss = self.loss_func(logits.view(-1, self.num_labels), labels.view(-1))
+                loss = loss_func(logits.view(-1, self.num_labels), labels.view(-1))
 
         # 如果不计算loss，返回logits和bert隐藏状态
         output = (loss, logits, outputs[0]) if loss is not None else (logits, outputs[0])
