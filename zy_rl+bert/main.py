@@ -4,19 +4,18 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import os
-import numpy as np
 import argparse
 from torch.utils import data
 from seqeval.metrics import precision_score, recall_score, f1_score
 from tqdm import tqdm
-
-from zy_utils import NerDataset, pad, VOCAB, tokenizer, tag2idx, idx2tag
-from zy_BertFinetun import MyBertModel
-
 os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 
+from zy_utils import NerDataset, pad, idx2tag
+from zy_BertFinetun import MyBertModel
+from easy_dqn import easy_dqn, DQN
 
-def train(model, iterator, optimizer, criterion, device):
+
+def train(model, dqn, iterator, optimizer, criterion, device):
     model.train()
     loss = 0
     for i, batch in enumerate(tqdm(iterator)):
@@ -25,7 +24,10 @@ def train(model, iterator, optimizer, criterion, device):
         y = y.to(device)
         _y = y # for monitoring
         optimizer.zero_grad()
-        outputs = model(x, y) # logits: (N, T, VOCAB), y: (N, T)
+
+        mask_x = easy_dqn(model, x, y, seqlens, dqn)
+        outputs = model(mask_x, y)  # logits: (N, T, VOCAB), y: (N, T)
+
         if len(outputs) == 3:
             loss = outputs[0]
             loss.backward()
@@ -91,7 +93,7 @@ if __name__=="__main__":
     parser.add_argument("--n_epochs", type=int, default=120)
     parser.add_argument("--finetuning", dest="finetuning", action="store_true", default=True)
     # parser.add_argument("--top_rnns", dest="top_rnns", action="store_true")
-    parser.add_argument("--logdir", type=str, default="./result/bert+fc")
+    parser.add_argument("--logdir", type=str, default="./result/bert+rl_mask")
     parser.add_argument("--trainset", type=str, default="./data/train.txt")
     parser.add_argument("--validset", type=str, default="./data/test.txt")
     parser.add_argument("--checkpoint_dir", type=str, default="")
@@ -100,6 +102,7 @@ if __name__=="__main__":
     device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
     model = MyBertModel().cuda()
+    dqn = DQN()
     print('Initial model Done')
     # model = nn.DataParallel(model)
 
@@ -121,14 +124,13 @@ if __name__=="__main__":
     optimizer = optim.Adam(model.parameters(), lr = hp.lr)
     criterion = nn.CrossEntropyLoss(ignore_index=0)
 
-    old_epoch = 0
     best_f1 = 0.
     if hp.checkpoint_dir:
+        print("model load from checkpoint dir " + hp.checkpoint_dir)
         checkpoint = torch.load(hp.checkpoint_dir)
         model.load_state_dict(checkpoint["model_state_dict"])
         optimizer.load_state_dict(checkpoint["optimizer_state_dict"])
-        old_epoch = checkpoint["epoch"]
-        best_f1 = checkpoint["best_f1"]
+        # best_f1 = checkpoint["best_f1"]
 
     print('Start Train...,')
     best_result = best_f1
@@ -137,11 +139,11 @@ if __name__=="__main__":
         patience += 1
         save_result = False
 
-        train(model, train_iter, optimizer, criterion, device)
+        train(model, dqn, train_iter, optimizer, criterion, device)
 
-        print(f"=========eval at epoch={epoch + old_epoch}=========")
+        print(f"=========eval at epoch={epoch}=========")
         if not os.path.exists(hp.logdir): os.makedirs(hp.logdir)
-        fname = os.path.join(hp.logdir, 'result' + str(epoch + old_epoch))
+        fname = os.path.join(hp.logdir, 'result' + str(epoch))
         precision, recall, f1 = eval(model, eval_iter, fname, device)
 
         if best_result < f1:
@@ -168,7 +170,7 @@ if __name__=="__main__":
                 fout.write(f"f1={f1}\n")
 
             torch.save({
-                "epoch": epoch + old_epoch,
+                "epoch": epoch,
                 "model_state_dict": model.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict(),
                 "best_f1": best_result
@@ -176,6 +178,6 @@ if __name__=="__main__":
             print(f"weights were saved to {fname}.pt")
 
         if patience > 20:
-            print("early stop at epoch {}, best f1 is {}, other results in file.".format(epoch + old_epoch, best_result))
+            print("early stop at epoch {}, best f1 is {}, other results in file.".format(epoch, best_result))
             break
     print("training is end, best f1 is {}, other results in file.".format(best_result))
